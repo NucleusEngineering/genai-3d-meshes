@@ -1,0 +1,82 @@
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: gcs-fuse-csi-pv
+spec:
+  accessModes:
+  - ReadWriteMany
+  capacity:
+    storage: 5Gi
+  storageClassName: standard-rwx
+  claimRef:
+    namespace: default
+    name: gcs-fuse-csi-static-pvc
+  mountOptions:
+    - implicit-dirs
+  csi:
+    driver: gcsfuse.csi.storage.gke.io
+    volumeHandle: h3d-cache
+    volumeAttributes:
+      gcsfuseLoggingSeverity: warning
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gcs-fuse-csi-static-pvc
+  namespace: default
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 5Gi
+  volumeName: gcs-fuse-csi-pv
+  storageClassName: standard-rwx
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gcs-fuse-debug
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gcs-fuse-debug
+  template:
+    metadata:
+      annotations:
+        gke-gcsfuse/volumes: "true"
+        gke-gcsfuse/cpu-limit: "10"
+        gke-gcsfuse/memory-limit: 200Gi
+        gke-gcsfuse/ephemeral-storage-limit: 200Gi
+        gke-gcsfuse/cpu-request: 500m
+        gke-gcsfuse/memory-request: 1Gi
+        gke-gcsfuse/ephemeral-storage-request: 100Gi
+      labels:
+        app: gcs-fuse-debug
+    spec:
+      serviceAccountName: hunyuan3d-sa
+      nodeSelector:
+        cloud.google.com/gke-accelerator: nvidia-l4       
+      containers:
+      - name: hunyuan3d-container
+        image: europe-west3-docker.pkg.dev/dn-demos/random-demos/h3d:latest
+        ports:
+        - containerPort: 8080
+        resources:
+          requests:
+            cpu: 16
+            memory: 32Gi
+            ephemeral-storage: 10Gi
+          limits:
+            nvidia.com/gpu: "1"            
+        volumeMounts:
+        - name: gcs-fuse-volume
+          mountPath: /app/static/models
+      volumes:
+      - name: gcs-fuse-volume
+        persistentVolumeClaim:
+          claimName: gcs-fuse-csi-static-pvc

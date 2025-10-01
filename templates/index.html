@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Imagen V4 and 3D Asset Generation on Cloud Run and GKE with Agones</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>What would you like to create?</h1>
+        <form id="prompt-form">
+            <input type="text" id="prompt-input" placeholder="Enter a prompt..." autocomplete="off">
+            <button type="submit" id="generate-button">Generate</button>
+        </form>
+        <div id="image-container"></div>
+
+        <div class="wireframe-toggle">
+            <label class="switch">
+                <input type="checkbox" id="wireframe-checkbox">
+                <span class="slider round"></span>
+            </label>
+            <span>Wireframe</span>
+        </div>
+
+    </div>
+    <div id="notification"></div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.161.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.161.0/examples/jsm/",
+                "three/nodes": "https://unpkg.com/three@0.161.0/examples/jsm/nodes/Nodes.js"
+            }
+        }
+    </script>
+    <script src="{{ url_for('static', filename='script.js') }}" type="module"></script>
+    <script type="module">
+        console.log("importing...");
+        import {show3DModel, showNotification} from "/static/script.js"
+        window.show3DModel = show3DModel;
+        window.showNotification = showNotification;
+    </script>
+
+    <footer class="footer">
+        <p>Powered by&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</p>
+        <div class="logos">
+            <img src="{{ url_for('static', filename='gemini-bw.png') }}" alt="Gemini">|
+            <img src="{{ url_for('static', filename='gcp-bw.png') }}" alt="Google Cloud">
+        </div>
+    </footer>
+</body>
+</html>

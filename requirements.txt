@@ -1,0 +1,5 @@
+Flask
+google-cloud-aiplatform
+google-cloud-pubsub
+Pillow
+Flask-SocketIO
