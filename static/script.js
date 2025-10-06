@@ -3,10 +3,9 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { FilmPass } from 'three/addons/postprocessing/FilmPass.js';
 
-const socket = io();    
+const socket = io();
 //const socket = io.connect('http://localhost:8080'); // for local testing
 
 export function showNotification(message) {
@@ -23,7 +22,7 @@ socket.on('model_update_complete', function(data) {
     const convertBtn = document.getElementById('convert-btn');
     convertBtn.innerHTML = 'Convert to 3D';
     convertBtn.disabled = false;
-    
+
     const showImageBtn = document.getElementById('side-by-side-button');
     if(showImageBtn) {
         showImageBtn.remove();
@@ -188,7 +187,7 @@ function handle3DModel(filename) {
         '/' + filename,
         function (gltf) {
             scene.add(gltf.scene);
-            
+
             const wireframeCheckbox = document.getElementById('wireframe-checkbox');
             wireframeCheckbox.addEventListener('change', function() {
                 scene.traverse(function (child) {
@@ -232,8 +231,8 @@ function handle3DModel(filename) {
     const composer = new EffectComposer(renderer);
     composer.addPass(new RenderPass(scene, camera));
 
-    const filmPass = new FilmPass(0.35, 0.025, 648, false);
-    composer.addPass(filmPass);
+    // const filmPass = new FilmPass(0.35, 0.025, 648, false);
+    // composer.addPass(filmPass);
 
     function animate() {
         requestAnimationFrame(animate);
