@@ -64,7 +64,7 @@ It is crucial to configure the environment variables correctly. The most importa
 #### 1. Set up Shared Storage
 
 1.  **Create a Filestore instance** for the NFS share required by the Hunyuan3D service. Note the NFS share IP address and file share name.
-2.  **Create a GCS bucket** that will be used by the frontend and worker services.
+2.  **Create a GCS bucket** that will be used by the frontend and worker services. It needs to be mounted at ``/app/static/models``.
 
 #### 2. Deploy Hunyuan3D Service
 
@@ -72,7 +72,7 @@ You can deploy this service to either Cloud Run with a GPU or GKE Autopilot with
 
 **Option A: Deploy to Cloud Run**
 
-Create a service with GPU support and 8vCPU / 32GB of RAM. Mount Filestore so it becomes /root in the container.
+Create a service with GPU support and 8vCPU / 32GB of RAM. Mount Filestore so it becomes ``/root`` in the container.
 
 **Option B: Deploy to GKE Autopilot**
 
