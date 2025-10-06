@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Imagen V4 and 3D Asset Generation on Cloud Run and GKE with Agones</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="icon" href="data:image/png;base64,iVBORw0KGgo=">
 </head>
 <body>
     <div class="container">
@@ -37,7 +38,6 @@
     </script>
     <script src="{{ url_for('static', filename='script.js') }}" type="module"></script>
     <script type="module">
-        console.log("importing...");
         import {show3DModel, showNotification} from "/static/script.js"
         window.show3DModel = show3DModel;
         window.showNotification = showNotification;

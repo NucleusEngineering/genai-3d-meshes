@@ -107,6 +107,7 @@ document.getElementById('prompt-form').addEventListener('submit', async function
                 convertFormData.append('image_path', image_path);
                 convertFormData.append('generate_texture', generateTexture);
                 convertFormData.append('face_count', faceCount);
+                convertFormData.append('sid', socket.id);
 
                 const convertResponse = await fetch('/convert', {
                     method: 'POST',
@@ -172,17 +173,24 @@ function handle3DModel(filename) {
     renderer.setSize(800, 800);
     renderer.setPixelRatio(window.devicePixelRatio);
 
+    // Add checkerboard background
+    const loader = new THREE.TextureLoader();
+    const texture = loader.load('https://threejs.org/examples/textures/checker.png');
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(50, 50);
+    scene.background = texture;
+
     const controls = new OrbitControls(camera, renderer.domElement);
 
-    const loader = new GLTFLoader();
-    loader.load(
+    const gltfLoader = new GLTFLoader();
+    gltfLoader.load(
         '/' + filename,
         function (gltf) {
             scene.add(gltf.scene);
             
             const wireframeCheckbox = document.getElementById('wireframe-checkbox');
             wireframeCheckbox.addEventListener('change', function() {
-                bloomPass.enabled = !wireframeCheckbox.checked;
                 scene.traverse(function (child) {
                     if (child.isMesh) {
                         child.material.wireframe = wireframeCheckbox.checked;
@@ -206,12 +214,16 @@ function handle3DModel(filename) {
 
     camera.position.z = 3;
 
-    const hemisphereLight = new THREE.HemisphereLight( 0xffffff, 0x444444, 2 );
+    const hemisphereLight = new THREE.HemisphereLight( 0xffffff, 0x444444, 4 );
     scene.add( hemisphereLight );
 
     const directionalLight = new THREE.DirectionalLight( 0xffffff, 4 );
     directionalLight.position.set( 5, 5, 5 );
     scene.add( directionalLight );
+
+    const directionalLight2 = new THREE.DirectionalLight( 0xffffff, 2 );
+    directionalLight2.position.set( -5, 5, -5 );
+    scene.add( directionalLight2 );
 
     const bottomLight = new THREE.DirectionalLight( 0xffffff, 2 );
     bottomLight.position.set( 0, -5, 0 );
@@ -220,17 +232,12 @@ function handle3DModel(filename) {
     const composer = new EffectComposer(renderer);
     composer.addPass(new RenderPass(scene, camera));
 
-    const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
-    bloomPass.threshold = 0;
-    bloomPass.strength = 0.5;
-    bloomPass.radius = 0;
-    composer.addPass(bloomPass);
-
     const filmPass = new FilmPass(0.35, 0.025, 648, false);
     composer.addPass(filmPass);
 
     function animate() {
         requestAnimationFrame(animate);
+
         controls.update();
         composer.render();
     }

@@ -20,11 +20,11 @@ os.makedirs(MODELS_FOLDER, exist_ok=True)
 publisher = pubsub_v1.PublisherClient()
 topic_path = publisher.topic_path(PROJECT_ID, TOPIC_NAME)
 
-def convert_to_3d_model(image_path, socket_app, generate_texture=False, face_count=5000):
+def convert_to_3d_model(image_path, socket_app, sid, generate_texture=False, face_count=5000):
     image_id = image_path.split('/')[-1]  # Extract the image filename from the path
     job_id = str(uuid.uuid4())
 
-    try:        
+    try:
         # Create the Pub/Sub message payload
         pubsub_message = {
             "image": image_path,
@@ -44,7 +44,7 @@ def convert_to_3d_model(image_path, socket_app, generate_texture=False, face_cou
         if job_id:
             logging.info(f"3D 3D Asset is being generated. Job ID: {job_id}")
 
-            threading.Thread(target=poll_job_status, args=(job_id, image_path, socket_app)).start()
+            threading.Thread(target=poll_job_status, args=(job_id, image_path, socket_app, sid)).start()
 
             return f'''3D Asset is being generated. Job ID: {job_id}.''',""
         
@@ -62,13 +62,13 @@ def convert_to_3d_model(image_path, socket_app, generate_texture=False, face_cou
         return "Reply that we failed to convert your avatar to a 3D model. Please try again later.", ""
         
 
-def poll_job_status(job_id, image_id, socket_app):
+def poll_job_status(job_id, image_id, socket_app, sid):
     retries = 0
     logging.info(f"Polling job status for {job_id}")
     while True:
         if retries >= 60:  # Timeout after 5 minutes (60 * 5 seconds)
             logging.error(f"Job {job_id} timed out after 5 minutes.")
-            socket_app.emit('model_update_error', {'status': 'error', 'error': 'Job timed out after 5 minutes.'})
+            socket_app.emit('model_update_error', {'status': 'error', 'error': 'Job timed out after 5 minutes.'}, room=sid)
             break
 
         try:
@@ -84,7 +84,7 @@ def poll_job_status(job_id, image_id, socket_app):
             if os.path.exists(model_path):
                 logging.info(f"Job {job_id} finished for image {image_id}")
 
-                notify_client(os.path.join("models/", model_filename), job_id, socket_app)
+                notify_client(os.path.join("models/", model_filename), job_id, socket_app, sid)
                 break  # Exit the loop once the job is finished and the model is updated
             else:
                 logging.info(f"Job {job_id} is queued, waiting 5 seconds to check again")
@@ -97,19 +97,19 @@ def poll_job_status(job_id, image_id, socket_app):
             break
 
 
-def notify_client(filename, job_id, socket_app):
+def notify_client(filename, job_id, socket_app, sid):
     try:
-        socket_app.emit('model_update_complete', {'model_path': filename, 'status': 'success'})
+        socket_app.emit('model_update_complete', {'model_path': filename, 'status': 'success'}, room=sid)
         logging.info(f"Sent WebSocket notification to user for job_id: {job_id}")
 
     except requests.exceptions.RequestException as e:
-        socket_app.emit('model_update_error', {'status': 'error', 'error': e})
+        socket_app.emit('model_update_error', {'status': 'error', 'error': e}, room=sid)
         logging.error(f"Error downloading model {filename} for job {job_id}: {e}")
     except FileNotFoundError as e:
-        socket_app.emit('model_update_error', {'status': 'error', 'error': e})
+        socket_app.emit('model_update_error', {'status': 'error', 'error': e}, room=sid)
         logging.error(f"Error saving model file locally for job {job_id}.")
     except Exception as e:
-        socket_app.emit('model_update_error', {'status': 'error', 'error': e})
+        socket_app.emit('model_update_error', {'status': 'error', 'error': e}, room=sid)
         logging.error(f"An unexpected error occurred during model download/update for job {job_id}: {e}")
         logging.error(traceback.format_exc())
 

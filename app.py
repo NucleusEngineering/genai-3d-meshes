@@ -55,9 +55,10 @@ def generate():
 @app.route('/convert', methods=['POST'])
 def convert():
     image_path = request.form['image_path']
+    sid = request.form['sid']
     generate_texture = request.form.get('generate_texture', 'false').lower() == 'true'
     face_count = request.form.get('face_count', '5000')
-    output, js = convert_to_3d_model(image_path=image_path, socket_app=socketio, generate_texture=generate_texture, face_count=int(face_count))
+    output, js = convert_to_3d_model(image_path=image_path, socket_app=socketio, generate_texture=generate_texture, face_count=int(face_count), sid=sid)
     # Start polling in a background thread
     return jsonify({'message': output, 'js': js})
 
