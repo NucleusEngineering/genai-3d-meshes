@@ -4,11 +4,13 @@ import os
 import requests
 from google.cloud import pubsub_v1
 from concurrent.futures import TimeoutError
+import logging
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Where Hunyuan3D-2 is deployed.
-GENERATE_API_ENDPOINT = os.getenv("GENERATE_API_ENDPOINT", "http://localhost:8080/generate")
-
-PROJECT_ID = os.getenv("PROJECT_ID")
+HUNYUAN3D_URL = os.getenv("HUNYUAN3D_URL", "https://h3d-936021411109.europe-west4.run.app/generate")
+PROJECT_ID = os.getenv("PROJECT_ID", "your-project-id")
 SUBSCRIPTION_NAME = os.getenv("SUBSCRIPTION_NAME", "genai3d-work-topic-sub")  # Replace with your Pub/Sub subscription name
 SUBSCRIPTION_PATH = f"projects/{PROJECT_ID}/subscriptions/{SUBSCRIPTION_NAME}"
 MODELS_FOLDER = 'static/models'
@@ -30,22 +32,22 @@ def process_message(message):
         texture = payload.get("generate_texture")
 
         if not image_path or not job_id:
-            print(f"Error: Missing 'image' or 'job_id' in message payload: {payload}")
+            logging.info(f"Error: Missing 'image' or 'job_id' in message payload: {payload}")
             message.nack()  # Acknowledge negatively (retry)
             return
 
-        print(f"Processing job: {job_id} with image: {image_path}")
+        logging.info(f"Processing job: {job_id} with image: {image_path}")
 
         # Read and base64 encode the image
         try:
             with open(image_path, "rb") as image_file:
                 encoded_string = base64.b64encode(image_file.read()).decode("utf-8")
         except FileNotFoundError:
-            print(f"Error: Image file not found at {image_path}")
+            logging.info(f"Error: Image file not found at {image_path}")
             message.nack()
             return
 
-        print(f"Payload: {payload}")
+        logging.info(f"Payload: {payload}")
 
         # Prepare the data for the GLB generation API
         data = {
@@ -56,10 +58,10 @@ def process_message(message):
 
         # Send the request to the GLB generation API
         try:
-            response = requests.post(GENERATE_API_ENDPOINT, headers={"Content-Type": "application/json"}, data=json.dumps(data), stream=True)
+            response = requests.post(HUNYUAN3D_URL, headers={"Content-Type": "application/json"}, data=json.dumps(data), stream=True)
             response.raise_for_status()  # Raise an exception for bad status codes
         except requests.exceptions.RequestException as e:
-            print(f"Error communicating with the GLB generation API: {e}")
+            logging.info(f"Error communicating with the GLB generation API: {e}")
             message.nack()
             return
 
@@ -69,21 +71,21 @@ def process_message(message):
             with open(output_path, "wb") as outfile:
                 for chunk in response.iter_content(chunk_size=8192):
                     outfile.write(chunk)
-            print(f"GLB file saved to: {output_path}")
+            logging.info(f"GLB file saved to: {output_path}")
             message.ack() # Acknowledge positively
         except Exception as e:
-            print(f"Error saving GLB file: {e}")
+            logging.info(f"Error saving GLB file: {e}")
             message.nack()
             return
 
 
     except json.JSONDecodeError as e:
-        print(f"Error decoding JSON: {e}")
+        logging.info(f"Error decoding JSON: {e}")
         message.nack() # Nack in case of JSON error
         return
 
     except Exception as e:
-        print(f"An unexpected error occurred: {e}")
+        logging.info(f"An unexpected error occurred: {e}")
         message.nack()
         return
 
@@ -92,7 +94,7 @@ def callback(message):
     """
     Callback function to process each received message.
     """
-    print(f"Received message: {message.message_id}")
+    logging.info(f"Received message: {message.message_id}")
     process_message(message)
 
 
@@ -103,7 +105,7 @@ def consume_messages():
     subscriber = pubsub_v1.SubscriberClient()
 
     streaming_pull_future = subscriber.subscribe(SUBSCRIPTION_PATH, callback=callback)
-    print(f"Listening for messages on {SUBSCRIPTION_PATH}...\n")
+    logging.info(f"Listening for messages on {SUBSCRIPTION_PATH}...\n")
 
     # Wrap subscriber as a 'with' block to automatically call close() when done.
     with subscriber:
@@ -115,7 +117,7 @@ def consume_messages():
             streaming_pull_future.cancel()  # Trigger the shutdown.
             streaming_pull_future.result()  # Block until the shutdown is complete.
         except Exception as e:
-            print(f"Error receiving messages: {e}")
+            logging.info(f"Error receiving messages: {e}")
             streaming_pull_future.cancel()
             streaming_pull_future.result()
 

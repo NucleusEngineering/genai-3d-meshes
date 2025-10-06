@@ -1,0 +1,19 @@
+apiVersion: skaffold/v4beta13
+kind: Config
+metadata:
+   name: h3d-frontend
+deploy:
+  cloudrun: {}
+manifests:
+  rawYaml:
+  - frontend-service.yaml
+---
+apiVersion: skaffold/v4beta13
+kind: Config
+metadata:
+   name: h3d-worker
+deploy:
+  cloudrun: {}
+manifests:
+  rawYaml:
+  - worker-pool.yaml

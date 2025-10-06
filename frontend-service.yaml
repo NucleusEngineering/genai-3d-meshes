@@ -1,0 +1,27 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: frontend-service
+spec:
+ template:
+    metadata:
+    spec:
+      containers:
+      - image: frontend-service-image
+        env:
+        - name: PROJECT_ID
+          value: "your-gcp-project-id"
+        - name: LOCATION
+          value: "your-gcp-location"
+        - name: SUBSCRIPTION_NAME
+          value: "genai3d-work-topic-sub"
+        volumeMounts:
+        - name: assets-volume
+          mountPath: /app/static/models
+      volumes:
+      - name: assets-volume
+        csi:
+          driver: gcsfuse.run.googleapis.com
+          readOnly: False
+          volumeAttributes:
+            bucketName: h3d-cache      

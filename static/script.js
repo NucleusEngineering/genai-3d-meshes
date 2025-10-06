@@ -6,7 +6,8 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { FilmPass } from 'three/addons/postprocessing/FilmPass.js';
 
-const socket = io.connect('http://localhost:8080');
+const socket = io();    
+//const socket = io.connect('http://localhost:8080'); // for local testing
 
 export function showNotification(message) {
     const notification = document.getElementById('notification');

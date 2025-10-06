@@ -11,8 +11,8 @@ from google.cloud import pubsub_v1  # Import the Pub/Sub library
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-PROJECT_ID = "dn-demos"  # Replace with your GCP project ID
-TOPIC_NAME = "genai3d-work-topic"  # Replace with your Pub/Sub topic name
+PROJECT_ID = os.getenv("PROJECT_ID", "your-project-id")  # Replace with your GCP project ID
+TOPIC_NAME = os.getenv("TOPIC_NAME", "genai3d-work-topic")  # Replace with your Pub/Sub topic name
 
 MODELS_FOLDER = 'static/models'
 os.makedirs(MODELS_FOLDER, exist_ok=True)
@@ -63,8 +63,14 @@ def convert_to_3d_model(image_path, socket_app, generate_texture=False, face_cou
         
 
 def poll_job_status(job_id, image_id, socket_app):
+    retries = 0
     logging.info(f"Polling job status for {job_id}")
     while True:
+        if retries >= 60:  # Timeout after 5 minutes (60 * 5 seconds)
+            logging.error(f"Job {job_id} timed out after 5 minutes.")
+            socket_app.emit('model_update_error', {'status': 'error', 'error': 'Job timed out after 5 minutes.'})
+            break
+
         try:
 
             """
@@ -84,6 +90,8 @@ def poll_job_status(job_id, image_id, socket_app):
                 logging.info(f"Job {job_id} is queued, waiting 5 seconds to check again")
 
             time.sleep(5)  # Wait for 5 seconds before checking again
+
+            retries += 1
         except requests.exceptions.RequestException as e:
             logging.error(f"Error checking job status for {job_id}: {e}")
             break
