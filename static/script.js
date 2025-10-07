@@ -23,6 +23,15 @@ socket.on('model_update_complete', function(data) {
     convertBtn.innerHTML = 'Convert to 3D';
     convertBtn.disabled = false;
 
+    const wireframeCheckboxContainer = document.getElementsByClassName('wireframe-toggle')[0];
+    const wireframeCheckbox = document.getElementById('wireframe-checkbox');
+
+    if(wireframeCheckboxContainer) {
+        wireframeCheckboxContainer.style.display = 'flex';
+        wireframeCheckbox.checked = false;
+    }
+
+
     const showImageBtn = document.getElementById('side-by-side-button');
     if(showImageBtn) {
         showImageBtn.remove();
@@ -39,6 +48,11 @@ document.getElementById('prompt-form').addEventListener('submit', async function
     const imageContainer = document.getElementById('image-container');
     const convertContainer = document.getElementById('convert-container');
     const showImageBtn = document.getElementById('side-by-side-button');
+    const wireframeCheckboxContainer = document.getElementsByClassName('wireframe-toggle')[0];
+
+    if(wireframeCheckboxContainer) {
+        wireframeCheckboxContainer.style.display = 'none';
+    }
 
     if(convertContainer) {
         convertContainer.style.display = 'none';

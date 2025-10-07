@@ -140,7 +140,7 @@ button:disabled {
     margin-right: 8px;
 }
 .wireframe-toggle {
-    display: flex;
+    display: none;
     align-items: center;
     justify-content: center;
     margin-bottom: 1rem;
