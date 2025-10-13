@@ -84,62 +84,8 @@ document.getElementById('prompt-form').addEventListener('submit', async function
         imageContainer.innerHTML = '';
 
         const result = await response.json();
+        handleImageResult(result, generateButton, "Generate");
 
-        if (result.image_path) {
-            generateButton.innerHTML = "Generate";
-            generateButton.disabled = false;
-
-            imageContainer.innerHTML = `
-                <div id="convert-container">
-                    <div class="checkbox-container">
-                        <input type="checkbox" id="generate-texture-checkbox" name="generate_texture" checked>
-                        <label for="generate-texture-checkbox">Generate Texture</label>
-                    </div>
-                    <div class="dropdown-container">
-                        <label for="face_count">Face Count:</label>
-                        <select id="face_count" name="face_count">
-                            <option value="1000">1000</option>
-                            <option value="2500">2500</option>
-                            <option value="5000" selected>5000</option>
-                            <option value="10000">10000</option>
-                            <option value="25000">25000</option>
-                            <option value="40000">40000</option>
-                        </select>
-                    </div>
-                    <button id="convert-btn">Convert to 3D</button>
-                </div>
-                <img src="${result.image_path}" alt="Generated Image" id="generated-image">
-            `;
-            document.getElementById('convert-btn').addEventListener('click', async function() {
-                this.disabled = true;
-                this.innerHTML = 'Converting...';
-                const image_path = result.image_path;
-                const generateTexture = document.getElementById('generate-texture-checkbox').checked;
-                const faceCount = document.getElementById('face_count').value;
-                const convertFormData = new FormData();
-                convertFormData.append('image_path', image_path);
-                convertFormData.append('generate_texture', generateTexture);
-                convertFormData.append('face_count', faceCount);
-                convertFormData.append('sid', socket.id);
-
-                const convertResponse = await fetch('/convert', {
-                    method: 'POST',
-                    body: convertFormData
-                });
-                const convertResult = await convertResponse.json();
-
-                if(convertResult.message) {
-                    showNotification(convertResult.message);
-                }
-                if(convertResult.js) {
-                    eval(convertResult.js);
-                }
-            });
-        } else {
-            generateButton.innerHTML = "Generate";
-            generateButton.disabled = false;
-            showNotification(result.error || 'An unknown error occurred.');
-        }
     } catch (error) {
         console.error('Error during generation:', error);
         generateButton.innerHTML = "Generate";
@@ -147,6 +93,114 @@ document.getElementById('prompt-form').addEventListener('submit', async function
         showNotification('Generation failed. Please try again.');
     }
 });
+
+document.getElementById('upload-form').addEventListener('submit', async function(event) {
+    event.preventDefault();
+
+    const imageInput = document.getElementById('image-upload-input');
+    const uploadButton = document.getElementById('upload-button');
+
+    if (imageInput.files.length === 0) {
+        showNotification('Please select an image to upload.');
+        return;
+    }
+
+    uploadButton.innerHTML = "Uploading...";
+    uploadButton.disabled = true;
+
+    const formData = new FormData();
+    formData.append('image', imageInput.files[0]);
+
+    try {
+        const response = await fetch('/upload', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        handleImageResult(result, uploadButton, "Upload Image");
+
+    } catch (error) {
+        console.error('Error during upload:', error);
+        uploadButton.innerHTML = "Upload Image";
+        uploadButton.disabled = false;
+        showNotification('Upload failed. Please try again.');
+    }
+});
+
+function handleImageResult(result, button, buttonText) {
+    const imageContainer = document.getElementById('image-container');
+    imageContainer.innerHTML = '';
+
+    if (result.image_path) {
+        button.innerHTML = buttonText;
+        button.disabled = false;
+
+        imageContainer.innerHTML = `
+            <div id="convert-container">
+                <div class="checkbox-container">
+                    <input type="checkbox" id="generate-texture-checkbox" name="generate_texture" checked>
+                    <label for="generate-texture-checkbox">Generate Texture</label>
+                </div>
+                <div class="dropdown-container">
+                    <label for="face_count">Face Count:</label>
+                    <select id="face_count" name="face_count">
+                        <option value="1000">1000</option>
+                        <option value="2500">2500</option>
+                        <option value="5000" selected>5000</option>
+                        <option value="10000">10000</option>
+                        <option value="25000">25000</option>
+                        <option value="40000">40000</option>
+                    </select>
+                </div>
+                <div class="dropdown-container">
+                    <label for="model_type">Model:</label>
+                    <select id="model_type" name="model_type">
+                        <option value="h3d" selected>Hunyuan3D</option>
+                        <option value="csm">CSM</option>
+                    </select>
+                </div>
+                <button id="convert-btn">Convert to 3D</button>
+            </div>
+            <img src="${result.image_path}" alt="Generated Image" id="generated-image">
+        `;
+        document.getElementById('convert-btn').addEventListener('click', async function() {
+            this.disabled = true;
+            this.innerHTML = 'Converting...';
+            const image_path = result.image_path;
+            const generateTexture = document.getElementById('generate-texture-checkbox').checked;
+            const faceCount = document.getElementById('face_count').value;
+            const modelType = document.getElementById('model_type').value;
+            const convertFormData = new FormData();
+            convertFormData.append('image_path', image_path);
+            convertFormData.append('generate_texture', generateTexture);
+            convertFormData.append('face_count', faceCount);
+            convertFormData.append('model_type', modelType);
+            convertFormData.append('sid', socket.id);
+
+            const convertResponse = await fetch('/convert', {
+                method: 'POST',
+                body: convertFormData
+            });
+            const convertResult = await convertResponse.json();
+
+            if(convertResult.message) {
+                showNotification(convertResult.message);
+            }
+            if(convertResult.js) {
+                eval(convertResult.js);
+            }
+        });
+    } else {
+        button.innerHTML = buttonText;
+        button.disabled = false;
+        showNotification(result.error || 'An unknown error occurred.');
+    }
+}
 
 function handle3DModel(filename) {
     const imageContainer = document.getElementById('image-container');

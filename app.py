@@ -52,13 +52,38 @@ def generate():
     else:
         return jsonify({'error': 'Image generation failed'})
 
+@app.route('/upload', methods=['POST'])
+def upload():
+    if 'image' not in request.files:
+        response = jsonify({'error': 'No image file provided'})
+        response.status_code = 400
+        return response
+    
+    image = request.files['image']
+    if image.filename == '':
+        response = jsonify({'error': 'No image file selected'})
+        response.status_code = 400
+        return response
+
+    if image:
+        filename = f"{uuid.uuid4()}.png"
+        image_path = os.path.join('static', 'models', filename)
+        image.save(image_path)
+        url_path = os.path.join('static', 'models', filename).replace(os.path.sep, '/')
+        return jsonify({'image_path': url_path})
+    
+    response = jsonify({'error': 'Image upload failed'})
+    response.status_code = 500
+    return response
+
 @app.route('/convert', methods=['POST'])
 def convert():
     image_path = request.form['image_path']
     sid = request.form['sid']
     generate_texture = request.form.get('generate_texture', 'false').lower() == 'true'
     face_count = request.form.get('face_count', '5000')
-    output, js = convert_to_3d_model(image_path=image_path, socket_app=socketio, generate_texture=generate_texture, face_count=int(face_count), sid=sid)
+    model_type = request.form.get('model_type', 'h3d')
+    output, js = convert_to_3d_model(image_path=image_path, socket_app=socketio, generate_texture=generate_texture, face_count=int(face_count), sid=sid, model_type=model_type)
     # Start polling in a background thread
     return jsonify({'message': output, 'js': js})
 

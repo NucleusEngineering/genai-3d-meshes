@@ -12,7 +12,7 @@ from google.cloud import pubsub_v1  # Import the Pub/Sub library
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 PROJECT_ID = os.getenv("PROJECT_ID", "your-project-id")  # Replace with your GCP project ID
-TOPIC_NAME = os.getenv("TOPIC_NAME", "genai3d-work-topic")  # Replace with your Pub/Sub topic name
+TOPIC_NAME = os.getenv("TOPIC_NAME", "your-topic-name")  # Replace with your Pub/Sub topic name
 
 MODELS_FOLDER = 'static/models'
 os.makedirs(MODELS_FOLDER, exist_ok=True)
@@ -20,7 +20,7 @@ os.makedirs(MODELS_FOLDER, exist_ok=True)
 publisher = pubsub_v1.PublisherClient()
 topic_path = publisher.topic_path(PROJECT_ID, TOPIC_NAME)
 
-def convert_to_3d_model(image_path, socket_app, sid, generate_texture=False, face_count=5000):
+def convert_to_3d_model(image_path, socket_app, sid, generate_texture=False, face_count=5000, model_type='h3d'):
     image_id = image_path.split('/')[-1]  # Extract the image filename from the path
     job_id = str(uuid.uuid4())
 
@@ -30,7 +30,8 @@ def convert_to_3d_model(image_path, socket_app, sid, generate_texture=False, fac
             "image": image_path,
             "job_id": job_id,
             "generate_texture": generate_texture,
-            "face_count": face_count
+            "face_count": face_count,
+            "model_type": model_type
         }
         
         # Publish the message to Pub/Sub
