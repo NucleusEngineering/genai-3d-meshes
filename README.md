@@ -41,10 +41,10 @@ This service manages the queue of generation tasks submitted by the frontend.
 ### MUST HAVE
 
 - NFS mounted storage should point to /root and already contain all the models from hugging face, in particular:
-
--- 7.9G    .cache/huggingface/hub/models--tencent--Hunyuan3D-2mini
--- 18G     .cache/huggingface/hub/models--tencent--Hunyuan3D-2
-
+```
+    -- 7.9G    .cache/huggingface/hub/models--tencent--Hunyuan3D-2mini
+    -- 18G     .cache/huggingface/hub/models--tencent--Hunyuan3D-2
+```
 
 
 ### Prerequisites
