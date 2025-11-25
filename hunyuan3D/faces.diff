@@ -1,0 +1,19 @@
+diff --git a/api_server.py b/api_server.py
+index dd2895b..ee191fa 100644
+--- a/api_server.py
++++ b/api_server.py
+@@ -212,10 +212,11 @@ class ModelWorker:
+             mesh = self.pipeline(**params)[0]
+             logger.info("--- %s seconds ---" % (time.time() - start_time))
+ 
++        mesh = FloaterRemover()(mesh)
++        mesh = DegenerateFaceRemover()(mesh)
++        mesh = FaceReducer()(mesh, max_facenum=params.get('face_count', 40000))
++
+         if params.get('texture', False):
+-            mesh = FloaterRemover()(mesh)
+-            mesh = DegenerateFaceRemover()(mesh)
+-            mesh = FaceReducer()(mesh, max_facenum=params.get('face_count', 40000))
+             mesh = self.pipeline_tex(mesh, image)
+ 
+         type = params.get('type', 'glb')

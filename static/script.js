@@ -3,10 +3,8 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-import { FilmPass } from 'three/addons/postprocessing/FilmPass.js';
 
 const socket = io();
-//const socket = io.connect('http://localhost:8080'); // for local testing
 
 export function showNotification(message) {
     const notification = document.getElementById('notification');
@@ -18,26 +16,8 @@ export function showNotification(message) {
 }
 
 socket.on('model_update_complete', function(data) {
-
-    const convertBtn = document.getElementById('convert-btn');
-    convertBtn.innerHTML = 'Convert to 3D';
-    convertBtn.disabled = false;
-
-    const wireframeCheckboxContainer = document.getElementsByClassName('wireframe-toggle')[0];
-    const wireframeCheckbox = document.getElementById('wireframe-checkbox');
-
-    if(wireframeCheckboxContainer) {
-        wireframeCheckboxContainer.style.display = 'flex';
-        wireframeCheckbox.checked = false;
-    }
-
-
-    const showImageBtn = document.getElementById('side-by-side-button');
-    if(showImageBtn) {
-        showImageBtn.remove();
-    }
-
-    handle3DModel(data.model_path);
+    show3DModel(data.model_path, data.model_path.split('/').pop());
+    loadAvailableModels();
 });
 
 document.getElementById('prompt-form').addEventListener('submit', async function(event) {
@@ -45,28 +25,9 @@ document.getElementById('prompt-form').addEventListener('submit', async function
 
     const prompt = document.getElementById('prompt-input').value;
     const generateButton = document.getElementById('generate-button');
-    const imageContainer = document.getElementById('image-container');
-    const convertContainer = document.getElementById('convert-container');
-    const showImageBtn = document.getElementById('side-by-side-button');
-    const wireframeCheckboxContainer = document.getElementsByClassName('wireframe-toggle')[0];
-
-    if(wireframeCheckboxContainer) {
-        wireframeCheckboxContainer.style.display = 'none';
-    }
-
-    if(convertContainer) {
-        convertContainer.style.display = 'none';
-    }
-    if(showImageBtn) {
-        showImageBtn.remove();
-    }
-
+    
     generateButton.innerHTML = "Generating...";
     generateButton.disabled = true;
-    const canvas = imageContainer.querySelector('canvas');
-    if(canvas) {
-        canvas.remove();
-    }
 
     const formData = new FormData();
     formData.append('prompt', prompt);
@@ -80,8 +41,6 @@ document.getElementById('prompt-form').addEventListener('submit', async function
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-
-        imageContainer.innerHTML = '';
 
         const result = await response.json();
         handleImageResult(result, generateButton, "Generate");
@@ -140,7 +99,13 @@ function handleImageResult(result, button, buttonText) {
         button.innerHTML = buttonText;
         button.disabled = false;
 
+        let enrichedPromptHTML = '';
+        if (result.enriched_prompt) {
+            enrichedPromptHTML = `<div class="enriched-prompt"><b>Enriched Prompt:</b> ${result.enriched_prompt}</div>`;
+        }
+
         imageContainer.innerHTML = `
+            ${enrichedPromptHTML}
             <div id="convert-container">
                 <div class="checkbox-container">
                     <input type="checkbox" id="generate-texture-checkbox" name="generate_texture" checked>
@@ -148,7 +113,7 @@ function handleImageResult(result, button, buttonText) {
                 </div>
                 <div class="dropdown-container">
                     <label for="face_count">Face Count:</label>
-                    <select id="face_count" name="face_count">
+                    <select id="face_count" name="face_count" class="cyber-dropdown">
                         <option value="1000">1000</option>
                         <option value="2500">2500</option>
                         <option value="5000" selected>5000</option>
@@ -157,14 +122,7 @@ function handleImageResult(result, button, buttonText) {
                         <option value="40000">40000</option>
                     </select>
                 </div>
-                <div class="dropdown-container">
-                    <label for="model_type">Model:</label>
-                    <select id="model_type" name="model_type">
-                        <option value="h3d" selected>Hunyuan3D</option>
-                        <option value="csm">CSM</option>
-                    </select>
-                </div>
-                <button id="convert-btn">Convert to 3D</button>
+                <button id="convert-btn" class="cyber-button">Convert to 3D</button>
             </div>
             <img src="${result.image_path}" alt="Generated Image" id="generated-image">
         `;
@@ -172,16 +130,18 @@ function handleImageResult(result, button, buttonText) {
             this.disabled = true;
             this.innerHTML = 'Converting...';
             const image_path = result.image_path;
+            const enrichedPrompt = result.enriched_prompt;
+            const newFilename = result.new_filename;
             const generateTexture = document.getElementById('generate-texture-checkbox').checked;
             const faceCount = document.getElementById('face_count').value;
-            const modelType = document.getElementById('model_type').value;
             const convertFormData = new FormData();
             convertFormData.append('image_path', image_path);
+            convertFormData.append('enriched_prompt', enrichedPrompt);
             convertFormData.append('generate_texture', generateTexture);
             convertFormData.append('face_count', faceCount);
-            convertFormData.append('model_type', modelType);
             convertFormData.append('sid', socket.id);
-
+            convertFormData.append('new_filename', newFilename);
+            
             const convertResponse = await fetch('/convert', {
                 method: 'POST',
                 body: convertFormData
@@ -202,10 +162,9 @@ function handleImageResult(result, button, buttonText) {
     }
 }
 
-function handle3DModel(filename) {
+function handle3DModel(filename, title) {
     const imageContainer = document.getElementById('image-container');
-    const image = document.getElementById('generated-image');
-    image.style.display = 'none';
+    imageContainer.innerHTML = '';
 
     let canvas = document.querySelector('canvas');
     if(!canvas) {
@@ -215,24 +174,6 @@ function handle3DModel(filename) {
         imageContainer.appendChild(canvas);
     }
 
-    const showImageBtn = document.createElement('button');
-    showImageBtn.innerHTML = 'Show Image';
-    showImageBtn.id = 'side-by-side-button';
-    showImageBtn.style.marginTop = '32px';
-    imageContainer.appendChild(showImageBtn);
-
-    showImageBtn.addEventListener('mousedown', () => {
-        canvas.style.display = 'none';
-        image.style.display = 'block';
-        showImageBtn.innerHTML = 'See render';
-    });
-
-    showImageBtn.addEventListener('mouseup', () => {
-        canvas.style.display = 'block';
-        image.style.display = 'none';
-        showImageBtn.innerHTML = 'See original';
-    });
-
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
     const renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true });
@@ -240,7 +181,6 @@ function handle3DModel(filename) {
     renderer.setSize(800, 800);
     renderer.setPixelRatio(window.devicePixelRatio);
 
-    // Add checkerboard background
     const loader = new THREE.TextureLoader();
     const texture = loader.load('https://threejs.org/examples/textures/checker.png');
     texture.wrapS = THREE.RepeatWrapping;
@@ -257,18 +197,52 @@ function handle3DModel(filename) {
             scene.add(gltf.scene);
 
             const wireframeCheckbox = document.getElementById('wireframe-checkbox');
+            const originalMaterials = new Map();
             wireframeCheckbox.addEventListener('change', function() {
                 scene.traverse(function (child) {
                     if (child.isMesh) {
-                        child.material.wireframe = wireframeCheckbox.checked;
+                        if (wireframeCheckbox.checked) {
+                            if (!child.material.map) {
+                                if (!originalMaterials.has(child.uuid)) {
+                                    originalMaterials.set(child.uuid, child.material);
+                                }
+                                child.material = new THREE.MeshBasicMaterial({
+                                    color: 0x000000,
+                                    wireframe: true
+                                });
+                            } else {
+                                child.material.wireframe = true;
+                            }
+                        } else {
+                            if (originalMaterials.has(child.uuid)) {
+                                child.material = originalMaterials.get(child.uuid);
+                            }
+                            child.material.wireframe = false;
+                        }
                     }
                 });
             });
 
             scene.traverse(function (child) {
                 if (child.isMesh) {
-                    console.log("converting to wireframe: " + wireframeCheckbox.checked);
-                    child.material.wireframe = wireframeCheckbox.checked;
+                    if (wireframeCheckbox.checked) {
+                        if (!child.material.map) {
+                            if (!originalMaterials.has(child.uuid)) {
+                                originalMaterials.set(child.uuid, child.material);
+                            }
+                            child.material = new THREE.MeshBasicMaterial({
+                                color: 0x000000,
+                                wireframe: true
+                            });
+                        } else {
+                            child.material.wireframe = true;
+                        }
+                    } else {
+                        if (originalMaterials.has(child.uuid)) {
+                            child.material = originalMaterials.get(child.uuid);
+                        }
+                        child.material.wireframe = false;
+                    }
                 }
             });
 
@@ -299,9 +273,6 @@ function handle3DModel(filename) {
     const composer = new EffectComposer(renderer);
     composer.addPass(new RenderPass(scene, camera));
 
-    // const filmPass = new FilmPass(0.35, 0.025, 648, false);
-    // composer.addPass(filmPass);
-
     function animate() {
         requestAnimationFrame(animate);
 
@@ -311,6 +282,45 @@ function handle3DModel(filename) {
     animate();
 }
 
-export function show3DModel(filename) {
-    handle3DModel(filename);
+export function show3DModel(filename, title) {
+    const wireframeCheckboxContainer = document.getElementsByClassName('wireframe-toggle')[0];
+    const wireframeCheckbox = document.getElementById('wireframe-checkbox');
+
+    if(wireframeCheckboxContainer) {
+        wireframeCheckboxContainer.style.display = 'flex';
+        wireframeCheckbox.checked = true;
+    }
+    handle3DModel(filename, title);
 }
+
+async function loadAvailableModels() {
+    try {
+        const response = await fetch('/models');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const models = await response.json();
+        const modelList = document.getElementById('model-list');
+        modelList.innerHTML = '';
+        models.forEach(model => {
+            const li = document.createElement('li');
+            const date = new Date(model.created_at * 1000);
+            const formattedDate = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
+            li.innerHTML = `<span class="model-name">${model.name}</span><div class="model-actions"><span class="model-date">${formattedDate}</span><a href="static/models/${model.name}" download="${model.name}" class="download-btn cyber-button">Download</a></div>`;
+            li.addEventListener('click', () => {
+                show3DModel(`static/models/${model.name}`, model.name);
+            });
+            const downloadBtn = li.querySelector('.download-btn');
+            downloadBtn.addEventListener('click', (event) => {
+                event.stopPropagation();
+            });
+            modelList.appendChild(li);
+        });
+    } catch (error) {
+        console.error('Error loading available models:', error);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadAvailableModels();
+});

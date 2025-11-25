@@ -20,7 +20,7 @@ os.makedirs(MODELS_FOLDER, exist_ok=True)
 publisher = pubsub_v1.PublisherClient()
 topic_path = publisher.topic_path(PROJECT_ID, TOPIC_NAME)
 
-def convert_to_3d_model(image_path, socket_app, sid, generate_texture=False, face_count=5000, model_type='h3d'):
+def convert_to_3d_model(image_path, socket_app, sid, enriched_prompt, new_filename, generate_texture=False, face_count=5000, model_type='h3d'):
     image_id = image_path.split('/')[-1]  # Extract the image filename from the path
     job_id = str(uuid.uuid4())
 
@@ -31,7 +31,9 @@ def convert_to_3d_model(image_path, socket_app, sid, generate_texture=False, fac
             "job_id": job_id,
             "generate_texture": generate_texture,
             "face_count": face_count,
-            "model_type": model_type
+            "model_type": model_type,
+            "enriched_prompt": enriched_prompt,
+            "new_filename": new_filename
         }
         
         # Publish the message to Pub/Sub
@@ -45,7 +47,7 @@ def convert_to_3d_model(image_path, socket_app, sid, generate_texture=False, fac
         if job_id:
             logging.info(f"3D 3D Asset is being generated. Job ID: {job_id}")
 
-            threading.Thread(target=poll_job_status, args=(job_id, image_path, socket_app, sid)).start()
+            threading.Thread(target=poll_job_status, args=(job_id, new_filename, image_path, socket_app, sid)).start()
 
             return f'''3D Asset is being generated. Job ID: {job_id}.''',""
         
@@ -63,7 +65,7 @@ def convert_to_3d_model(image_path, socket_app, sid, generate_texture=False, fac
         return "Reply that we failed to convert your avatar to a 3D model. Please try again later.", ""
         
 
-def poll_job_status(job_id, image_id, socket_app, sid):
+def poll_job_status(job_id, new_filename, image_id, socket_app, sid):
     retries = 0
     logging.info(f"Polling job status for {job_id}")
     while True:
@@ -77,7 +79,7 @@ def poll_job_status(job_id, image_id, socket_app, sid):
             """
             Checks if a job is finished by looking for a corresponding .glb file.
             """
-            model_filename = f"{job_id}.glb"
+            model_filename = f"{new_filename}.glb"
             model_path = os.path.join(MODELS_FOLDER, model_filename)
             
             # Assuming your base URL is the address where this app is running, otherwise you will need to change this.

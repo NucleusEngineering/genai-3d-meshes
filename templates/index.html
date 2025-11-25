@@ -9,40 +9,18 @@
 </head>
 <body>
     <div class="container">
-        <h1>What would you like to create?</h1>
-        <form id="prompt-form">
-            <input type="text" id="prompt-input" placeholder="Enter a prompt..." autocomplete="off">
-            <button type="submit" id="generate-button">Generate</button>
-        </form>
-        <div class="separator">or</div>
-        <form id="upload-form">
-            <input type="file" id="image-upload-input" accept="image/*">
-            <button type="submit" id="upload-button">Upload Image</button>
-        </form>
-        <div id="image-container">
-            <!-- -->
-            <!-- <div id="convert-container">
-                <div class="checkbox-container">
-                    <input type="checkbox" id="generate-texture-checkbox" name="generate_texture" checked>
-                    <label for="generate-texture-checkbox">Generate Texture</label>
-                </div>
-                <div class="dropdown-container">
-                    <label for="face_count">Face Count:</label>
-                    <select id="face_count" name="face_count">
-                        <option value="1000">1000</option>
-                        <option value="2500">2500</option>
-                        <option value="5000" selected>5000</option>
-                        <option value="10000">10000</option>
-                        <option value="25000">25000</option>
-                        <option value="40000">40000</option>
-                    </select>
-                </div>
-                <button id="convert-btn">Convert to 3D</button>
-            </div>
-            <img src="" alt="Generated Image" id="generated-image"> -->
-            <!-- -->
+        <h1>Image to 3D with Nano Banana and Vertex AI</h1>
+        <div class="form-container">
+            <form id="prompt-form">
+                <input type="text" id="prompt-input" placeholder="Enter a prompt..." autocomplete="off">
+                <button type="submit" id="generate-button">Generate</button>
+            </form>
+            <div class="separator">or</div>
+            <form id="upload-form">
+                <input type="file" id="image-upload-input" accept="image/*">
+                <button type="submit" id="upload-button">Upload Image</button>
+            </form>
         </div>
-
         <div class="wireframe-toggle">
             <label class="switch">
                 <input type="checkbox" id="wireframe-checkbox">
@@ -50,6 +28,14 @@
             </label>
             <span>Wireframe</span>
         </div>
+        <div id="image-container">
+        </div>
+
+        <div id="model-list-container">
+            <h2>Available Models</h2>
+            <ul id="model-list"></ul>
+        </div>
+
 
     </div>
     <div id="notification"></div>

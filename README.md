@@ -20,9 +20,7 @@ This service is responsible for the core 3D model generation.
 
 -   **Source Directory**: `hunyuan3D/`
 -   **Dockerfile**: `hunyuan3D/Dockerfile` (based on an NVIDIA image)
--   **Deployment**:
-    -   Cloud Run with GPUs
-    -   GKE Autopilot with GPUs
+-   **Deployment**: Cloud Run with GPUs
 
 ### 2. Frontend Application
 
@@ -40,20 +38,28 @@ This service manages the queue of generation tasks submitted by the frontend.
 
 ## Setup and Deployment
 
+### MUST HAVE
+
+- NFS mounted storage should point to /root and already contain all the models from hugging face, in particular:
+
+-- 7.9G    .cache/huggingface/hub/models--tencent--Hunyuan3D-2mini
+-- 18G     .cache/huggingface/hub/models--tencent--Hunyuan3D-2
+
+
+
 ### Prerequisites
 
 -   Google Cloud Project with billing enabled.
 -   `gcloud` CLI installed and authenticated.
--   Docker installed.
--   A shared NFS folder (e.g., Filestore) for the Hunyuan3D service.
--   A Google Cloud Storage bucket for the frontend and worker to use with GCS FUSE.
+-   Docker installed. (for local builds, so it's optional)
+-   A shared NFS folder (e.g., Filestore) for the Hunyuan3D service as well as shared models and image assets
 
 ### Environment Variables
 
 It is crucial to configure the environment variables correctly. The most important one is passing the URL of the deployed **Hunyuan3D service** to the **Worker Pool** application.
 
--   `HUNYUAN3D_URL`: The endpoint of the Hunyuan3D service. This needs to be set for the worker service.
--   `LOCATION`: In which region you are running this workload.
+-   `HUNYUAN3D_URL`: The endpoint of the Hunyuan3D service. This needs to be set for the worker service. (don't forget the /generate path)
+-   `VERTEX_REGION`: In which region you want to invoke vertex services such as imagen
 -   `PROJECT_ID`: Your Google Cloud project ID.
 -   `TOPIC_NAME`: The name of the pubsub topic to publish to.
 -   `SUBSCRIPTION_NAME`: The name of the pubsub subscription to listen to.
@@ -70,19 +76,10 @@ It is crucial to configure the environment variables correctly. The most importa
 
 You can deploy this service to either Cloud Run with a GPU or GKE Autopilot with a GPU.
 
-**Option A: Deploy to Cloud Run**
+** Deploy to Cloud Run**
 
 Create a service with GPU support and 8vCPU / 32GB of RAM. Mount Filestore so it becomes ``/root`` in the container.
 
-**Option B: Deploy to GKE Autopilot**
-
-Update [`hunyuan3D/gke-deployment.yaml`](hunyuan3D/gke-deployment.yaml:1) with your project details and NFS server details.
-
-```bash
-gcloud container clusters create-auto autopilot-cluster --region=us-central1
-gcloud container clusters get-credentials autopilot-cluster --region=us-central1
-kubectl apply -f hunyuan3D/gke-deployment.yaml
-```
 
 After deployment, get the external IP/domain of the service and set it as `HUNYUAN3D_URL`.
 
@@ -90,4 +87,3 @@ After deployment, get the external IP/domain of the service and set it as `HUNYU
 
 Frontend (Docker-frontend) is deployed as Cloud Run service and Worker (Docker-worker) is deployed as a Worker Pool in Cloud Run. Make sure they have
 the right permissions for Pub Sub, Cloud Storage and Vertex AI.
-

@@ -1,0 +1,45 @@
+# This is a sample Cloud Run service definition for a GPU-enabled service.
+#
+# Before deploying, you need to:
+# 1. Replace YOUR_PROJECT_ID with your Google Cloud project ID.
+# 2. Build and push your Docker container to a container registry like Artifact Registry.
+#    gcloud builds submit --tag gcr.io/YOUR_PROJECT_ID/hunyuan3d:latest .
+# 3. Deploy this service using:
+#    gcloud run services replace cloudrun-service.yaml --region=europe-west3
+#
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: hunyuan3d-service # You can change this name
+spec:
+  template:
+    metadata:
+      annotations:
+        run.googleapis.com/execution-environment: gen2
+        run.googleapis.com/gpu: "1"
+        run.googleapis.com/gpu-type: "nvidia-l4" # Or "nvidia-t4". L4 is generally more cost-effective for graphics.
+        autoscaling.knative.dev/maxScale: "5" # Set a max number of instances to control costs.
+        run.googleapis.com/volume-mounting-method: "NFS"
+        # Add the VPC connector annotation for NFS. Replace with your actual connector details.
+        run.googleapis.com/vpc-access-connector: "projects/YOUR_PROJECT_ID/locations/YOUR_REGION/connectors/YOUR_CONNECTOR_NAME"
+        run.googleapis.com/vpc-access-egress: "all-traffic" # Direct all outbound traffic through the VPC connector.
+    spec:
+      containerConcurrency: 1 # Recommended for GPU workloads to process one request at a time per instance.
+      timeoutSeconds: 900 # Max timeout. Adjust if your model takes longer.
+      containers:
+        - image: gcr.io/YOUR_PROJECT_ID/hunyuan3d:latest # <-- IMPORTANT: Replace with your container image path
+          ports:
+            - containerPort: 8080
+          resources:
+            limits:
+              cpu: "8"
+              memory: "32Gi"
+          volumeMounts:
+            - name: filestore-volume
+              mountPath: /vol1
+      volumes:
+        - name: filestore-volume
+          nfs:
+            server: YOUR_NFS_SERVER_IP_ADDRESS
+            path: /vol1/h3d
+            readOnly: false

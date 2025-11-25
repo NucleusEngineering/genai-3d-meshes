@@ -38,6 +38,8 @@ RUN python3 setup.py install
 
 WORKDIR /app/Hunyuan3D-2
 
+COPY faces.diff .
+RUN git apply faces.diff
 # Set the entrypoint
 # CMD ["tail", "-f", "/dev/null"]
 CMD ["conda", "run", "--no-capture-output", "-n", "hunyuan3d", "python", "api_server.py", "--host", "0.0.0.0", "--port", "8080", "--enable_tex"]

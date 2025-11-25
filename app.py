@@ -1,17 +1,22 @@
 import os
 import uuid
 import logging
+import json
+import time
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_socketio import SocketIO
 import vertexai
+from vertexai.generative_models import GenerativeModel
 from vertexai.preview.vision_models import ImageGenerationModel
 from queuing import convert_to_3d_model
+from dotenv import load_dotenv
+load_dotenv()
 
 # Global logging config
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Initialize Vertex AI
-vertexai.init(project=os.getenv("PROJECT_ID"), location=os.getenv("LOCATION"))
+vertexai.init(project=os.getenv("PROJECT_ID"), location=os.getenv("VERTEX_REGION"))
 
 app = Flask(__name__)
 socketio = SocketIO(app)
@@ -19,9 +24,43 @@ socketio = SocketIO(app)
 # Load the image generation model
 generation_model = ImageGenerationModel.from_pretrained("imagen-4.0-fast-generate-001")
 
+def rework_prompt(prompt):
+    """Enriches a basic prompt with more details using Gemini."""
+    try:
+        model = GenerativeModel('gemini-2.5-flash-lite')
+
+        response = model.generate_content(
+            contents=f"First you should enrich the provided prompt so it can be used to create a 3D model with white background, adding details to make it more visually interesting, but keeping the core concept. Second, you should create a filename made out of 3 main keywords from the prompt. The output should always be a valid json containing 'enriched_prompt' and 'filename' fields. Prompt to enrich is: {prompt}",
+            generation_config={
+                "response_mime_type": "application/json"
+            }            
+        )
+        print(response.text)
+        return response.text
+    except Exception as e:
+        logging.error(f"Error enriching prompt: {e}")
+        return prompt  # Fallback to the original prompt
+
 @app.route('/')
 def index():
     return render_template('index.html')
+
+@app.route('/models')
+def list_models():
+    models_dir = os.path.join('static', 'models')
+    if not os.path.exists(models_dir):
+        return jsonify([])
+    glb_files = []
+    for f in os.listdir(models_dir):
+        if f.endswith('.glb'):
+            filepath = os.path.join(models_dir, f)
+            creation_time = os.path.getctime(filepath)
+            glb_files.append({'name': f, 'created_at': creation_time})
+    
+    # Sort by creation time, newest first
+    glb_files.sort(key=lambda x: x['created_at'], reverse=True)
+    
+    return jsonify(glb_files)
 
 @app.route('/models/<path:filename>')
 def serve_model(filename):
@@ -30,9 +69,13 @@ def serve_model(filename):
 @app.route('/generate', methods=['POST'])
 def generate():
     prompt = request.form['prompt']
+    reworked_prompt_json = rework_prompt(prompt)
+    reworked_prompt = json.loads(reworked_prompt_json)
+    enriched_prompt = reworked_prompt['enriched_prompt']
+    new_filename = reworked_prompt['filename']
 
     images = generation_model.generate_images(
-        prompt="A 3D model of " + prompt + " with white background.",
+        prompt=enriched_prompt,
         number_of_images=1,
         aspect_ratio="1:1",
         negative_prompt="",
@@ -48,7 +91,7 @@ def generate():
         image.save(image_path)
         # Return the URL path for the browser
         url_path = os.path.join('static', 'models', filename).replace(os.path.sep, '/')
-        return jsonify({'image_path': url_path})
+        return jsonify({'image_path': url_path, 'enriched_prompt': enriched_prompt, 'new_filename': new_filename})
     else:
         return jsonify({'error': 'Image generation failed'})
 
@@ -80,10 +123,19 @@ def upload():
 def convert():
     image_path = request.form['image_path']
     sid = request.form['sid']
+    enriched_prompt = request.form['enriched_prompt']
+    if not enriched_prompt:
+        enriched_prompt = "Uploaded 3D model"
+
+    current_timestamp = str(int(time.time()))
+    new_filename = request.form['new_filename'] + "-" + current_timestamp
+    if not new_filename:
+        new_filename = current_timestamp
+
     generate_texture = request.form.get('generate_texture', 'false').lower() == 'true'
     face_count = request.form.get('face_count', '5000')
     model_type = request.form.get('model_type', 'h3d')
-    output, js = convert_to_3d_model(image_path=image_path, socket_app=socketio, generate_texture=generate_texture, face_count=int(face_count), sid=sid, model_type=model_type)
+    output, js = convert_to_3d_model(image_path=image_path, socket_app=socketio, enriched_prompt=enriched_prompt, new_filename=new_filename, generate_texture=generate_texture, face_count=int(face_count), sid=sid, model_type=model_type)
     # Start polling in a background thread
     return jsonify({'message': output, 'js': js})
 

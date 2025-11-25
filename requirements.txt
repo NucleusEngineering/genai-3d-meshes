@@ -3,3 +3,7 @@ google-cloud-aiplatform
 google-cloud-pubsub
 Pillow
 Flask-SocketIO
+fastapi-mcp
+uv
+
+python-dotenv
