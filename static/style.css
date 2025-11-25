@@ -70,6 +70,22 @@ button:disabled {
     min-height: 200px;
 }
 
+#image-container.loading #generated-image {
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
 #generated-image {
     max-width: 100%;
     height: auto;

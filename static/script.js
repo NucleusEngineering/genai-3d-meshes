@@ -127,6 +127,8 @@ function handleImageResult(result, button, buttonText) {
             <img src="${result.image_path}" alt="Generated Image" id="generated-image">
         `;
         document.getElementById('convert-btn').addEventListener('click', async function() {
+            const imageContainer = document.getElementById('image-container');
+            imageContainer.classList.add('loading');
             this.disabled = true;
             this.innerHTML = 'Converting...';
             const image_path = result.image_path;
